@@ -1,0 +1,62 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+  become: yes
+  become_method: sudo
+  vars_files:
+    - vars.yml
+  
+  tasks: 
+      
+    - name: updates a server
+      apt: update_cache=yes
+
+    - name: upgrade a server
+      apt: upgrade=dist
+
+    - name: install Apache
+      apt: name=apache2 state=present
+
+    - name: install PHP module for Apache
+      apt: name=libapache2-mod-php5 state=present
+
+    - name: start Apache
+      service: name=apache2 state=running enabled=yes
+
+    - name: install mysql
+      apt: name=mysql-server state=present
+
+    - name: download wordpress
+      command: wget http://wordpress.org/latest.tar.gz
+
+    - name: untar latest
+      command: tar xzf latest.tar.gz
+
+    - name: rsync
+      command: rsync -avP ~/wordpress/ /var/www/html/
+      args:
+        chdir: ~/wordpress
+   
+    - name: rename the wp-config.php file 
+      command: mv /var/www/html/wp-config.php /var/www/html/wp-config-original.php
+    
+    - name: rename the index.html file 
+      command: mv /var/www/html/index.html /var/www/html/index.html.1
+    
+  #  - name: copy file from backup server
+  #    command: scp {{ backup_server }}/ /home/zimbi/
+
+    - name: untar the backup
+      command: tar -xvz /home/zimbi/ /home/zimbi
+
+    - name: move wp-config.php to correct location
+      command: mv /home/zimbi/wp-config.php /var/www/html/wp-config.php 
+
+    - name: move mysql.cnf to correct location
+      command: mv /home/zimbi/mysql.cnf /etc/mysql/mysql.cnf
+
+    - name: import database 
+      mysql_db: name={{item}} login_user=root login_password=1234 state=import
+      with_items:
+         - wordpress
+         - mysql
